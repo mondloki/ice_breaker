@@ -3,16 +3,17 @@ from langchain_ollama import ChatOllama
 import warnings
 from third_parties.linkedin import scrape_linkedin_profile
 from agents.linkedin_lookup_agent import lookup as linkedin_lookup_agent
-from output_parsers import summary_parser
+from output_parsers import summary_parser, Summary
+from typing import Tuple
 warnings.simplefilter("ignore") 
 # model = "llama3.2:3b-instruct-fp16"
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-def ice_break_with(name:str) -> str:
+def ice_break_with(name:str) -> Tuple[Summary, str]:
     print("**App started**")
     linkedin_url_free_text = linkedin_lookup_agent(name=name)
     linkedin_profile_url = linkedin_url_free_text
-    linkedin_data = scrape_linkedin_profile(linkedin_profile_url=linkedin_profile_url, mock=True)
+    linkedin_data = scrape_linkedin_profile(linkedin_profile_url=linkedin_profile_url, mock=False)
 
     summary_template = """
     given the Linkedin information {information} about a person I want you to create:
@@ -39,13 +40,11 @@ def ice_break_with(name:str) -> str:
     chain = summary_prompt_template | llm | summary_parser
     print("**llm call started**")
     result = chain.invoke(input={"information" : linkedin_data})
-    print("$"*50)
-    print(result)
-    print("$"*50)
-    print("**App run completed**")
+    return result, linkedin_data.get("profile_pic_url")
 
 if __name__ == "__main__":
-    ice_break_with("Lokesh siva kumar Mondreti")
+    ice_break_with("eden marco")
+
 #     information = """
 # Mark Elliot Zuckerberg (born May 14, 1984) is an American businessman who co-founded 
 # the social media service Facebook and its parent company Meta Platforms, of which he is the chairman,
