@@ -1,14 +1,51 @@
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
-from langchain_core.output_parsers import StrOutputParser
 import warnings
 from third_parties.linkedin import scrape_linkedin_profile
+from agents.linkedin_lookup_agent import lookup as linkedin_lookup_agent
+from output_parsers import summary_parser
 warnings.simplefilter("ignore") 
+# model = "llama3.2:3b-instruct-fp16"
 
+from langchain_google_genai import ChatGoogleGenerativeAI
+def ice_break_with(name:str) -> str:
+    print("**App started**")
+    linkedin_url_free_text = linkedin_lookup_agent(name=name)
+    linkedin_profile_url = linkedin_url_free_text
+    linkedin_data = scrape_linkedin_profile(linkedin_profile_url=linkedin_profile_url, mock=True)
 
+    summary_template = """
+    given the Linkedin information {information} about a person I want you to create:
+    1. A short summary
+    2. two interesting facts about them
+
+    \n{format_instructions}
+    """
+
+    summary_prompt_template = PromptTemplate(input_variables=["information"], template=summary_template,
+                                             partial_variables={"format_instructions" : summary_parser.get_format_instructions()})
+
+    # llm = ChatOllama(model=model)
+
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        temperature=0,
+        max_tokens=None,
+        timeout=None,
+        max_retries=2,
+        # other params...
+    )
+
+    chain = summary_prompt_template | llm | summary_parser
+    print("**llm call started**")
+    result = chain.invoke(input={"information" : linkedin_data})
+    print("$"*50)
+    print(result)
+    print("$"*50)
+    print("**App run completed**")
 
 if __name__ == "__main__":
-    print("**App started**")
+    ice_break_with("Lokesh siva kumar Mondreti")
 #     information = """
 # Mark Elliot Zuckerberg (born May 14, 1984) is an American businessman who co-founded 
 # the social media service Facebook and its parent company Meta Platforms, of which he is the chairman,
@@ -18,20 +55,5 @@ if __name__ == "__main__":
 # roommates Eduardo Saverin, Andrew McCollum, Dustin Moskovitz and Chris Hughes. 
 # Zuckerberg took the company public in May 2012 with majority shares. 
 # """
-    summary_template = """
-    given the information {information} of a person, I want to you to create:
-    1. A short summary
-    2. Interesting facts about them
-    """
-
-    summary_prompt_template = PromptTemplate(input_variables=["information"], template=summary_template)
-
-    llm = ChatOllama(model="llama3.2")
-
-    chain = summary_prompt_template | llm | StrOutputParser()
-    print("**llm call started**")
-    linkedin_json_data = scrape_linkedin_profile(linkedin_profile_url="https://www.linkedin.com/in/eden-marco/",mock=True)
-    result = chain.invoke(input={"information" : linkedin_json_data})
-    print(result)
-    print("**App run completed**")
+    
 
